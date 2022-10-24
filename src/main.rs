@@ -17,7 +17,7 @@ enum LineType {
     Print,
     Full,
     Clear,
-    Quit
+    Quit,
 }
 
 struct Line {
@@ -38,29 +38,30 @@ fn try_operator(value: &char) -> Option<LineType> {
         'q' => Some(LineType::Quit),
         _ => {
             //println!("Failed to parse operator");
-            return None},
+            return None;
+        }
     };
-    return t
+    return t;
 }
 
 fn process(buff: &String) -> Option<Line> {
     let parsed = buff.trim().parse::<f64>();
 
     return match parsed {
-        Ok(val) => Some( Line {
+        Ok(val) => Some(Line {
             t: LineType::Number,
             v: val,
         }),
         Err(_) => {
-                //println!("Failed to parse float: buffer contains {}", *buff);
-                return match buff.trim().parse::<char>() {
-            Ok(val) => match try_operator(&val) {
-                Some(t) => Some(Line {t: t, v: 0.0}),
-                _ => None,
-            },
-            Err(_) => None,
+            //println!("Failed to parse float: buffer contains {}", *buff);
+            return match buff.trim().parse::<char>() {
+                Ok(val) => match try_operator(&val) {
+                    Some(t) => Some(Line { t: t, v: 0.0 }),
+                    _ => None,
+                },
+                Err(_) => None,
+            };
         }
-        },
     };
 }
 
@@ -89,21 +90,31 @@ fn main() {
             Some(i) => match i.t {
                 LineType::Number => stack.push(i.v),
                 LineType::Print => println!("{}", stack.last().unwrap()),
-                LineType::Full => {for s in &stack { println!("{}", s); }},
+                LineType::Full => {
+                    for s in &stack {
+                        println!("{}", s);
+                    }
+                }
                 LineType::Pop => println!("{}", stack.pop().unwrap()),
                 LineType::Plus => println!("plus"),
-                LineType::Clear => {stack = Vec::new()},
+                LineType::Clear => stack = Vec::new(),
                 LineType::Plus => {
                     let a = stack.last().unwrap();
                     let b = stack.last().unwrap();
                     let r = a + b;
                     println!("{}", r);
                     stack.push(r);
-                },
+                }
                 LineType::Quit => std::process::exit(0),
-                _ => {println!("?"); continue}
+                _ => {
+                    println!("?");
+                    continue;
+                }
             },
-            None => {println!("?"); continue}
+            None => {
+                println!("?");
+                continue;
+            }
         }
     }
 }
