@@ -17,6 +17,7 @@ enum LineType {
     Negate,
     //stack ops
     Pop,
+    UndoPop,
     Clear,
     //viewing
     Print,
@@ -58,6 +59,7 @@ fn try_operator(value: &char) -> Option<LineType> {
 fn try_command(value: &str) -> Option<LineType> {
     let t: Option<LineType> = match value {
         "cl" => Some(LineType::ClearScreen),
+        "ud" => Some(LineType::UndoPop),
         "quit" => Some(LineType::Quit),
         "exit" => Some(LineType::Quit),
         _ => {
@@ -67,29 +69,44 @@ fn try_command(value: &str) -> Option<LineType> {
     return t;
 }
 
-fn process(buff: &String) -> Option<Line> {
+fn try_combined(value: &str) -> Option<[Line]> {
+    let mut cs = value.chars();
+    let last: &char = &(cs.next_back().unwrap());
+    let first: &str = cs.as_str();
+    let operation: LineType = match try_operator(last) {
+        Some(op) => op,
+        None => return None
+    };
+    let number = match first.parse::<f64>() {
+        Ok(val) => val,
+        Err(_) => return None
+    };
+    return Some([Line {t: LineType::Number, v: number}, Line {t: operation, v: 0.0 }])
+
+
+}
+
+fn process(buff: &String) -> Option<[Line]> {
     let parsed = buff.trim().parse::<f64>();
 
     return match parsed {
-        Ok(val) => Some(Line {
+        Ok(val) => Some([Line {
             t: LineType::Number,
             v: val,
-        }),
-        Err(_) => {
-            return match buff.trim().parse::<char>() {
+        }]),
+        Err(_) => match buff.trim().parse::<char>() {
                 Ok(val) => match try_operator(&val) {
-                    Some(t) => Some(Line { t: t, v: 0.0 }),
+                    Some(t) => Some([Line { t: t, v: 0.0 }]),
                     _ => None,
                 },
                 Err(_) => match buff.trim().parse::<String>() {
                     Ok(val) => match try_command(&val) {
-                        Some(t) => Some(Line { t: t, v: 0.0 }),
-                        _ => None,
+                        Some(t) => Some([Line { t: t, v: 0.0 }]),
+                        None => None,
                     }
                     Err(_) => None,
                 },
-            };
-        }
+            }
     };
 }
 
@@ -103,6 +120,75 @@ fn printresult(r: &f64) {
     println!("{}", r.to_string().bold());
     println!("");
 }
+
+fn execute(val: &Line, stack: &mut Vec<f64>, undos: &mut Vec<f64>) {
+        match (*val).t {
+                LineType::Number => stack.push((*val).v),
+                LineType::Print => println!("{}", &stack.last().unwrap()),
+                LineType::Full => {
+                    for s in stack {
+                        print!("{}\n", s);
+                    }
+                    print!("\n");
+                    io::stdout().flush().unwrap();
+                }
+                LineType::Pop => {
+                    let r = stack.pop().unwrap();
+                    undos.push(r);
+                    printresult(&r);
+                },
+                LineType::UndoPop => {
+                    let r = undos.pop().unwrap();
+                    stack.push(r);
+                    printresult(&r);
+                }
+                LineType::Swap => {
+                    let (a, b) = poptwo(stack).unwrap();
+                    stack.push(a);
+                    stack.push(b);
+                },
+                LineType::Flip => {stack.reverse()},
+                LineType::Clear => *stack = Vec::new(),
+                LineType::ClearScreen => print!("{esc}c", esc = 27 as char),
+                LineType::Plus => {
+                    let (a, b) = poptwo(stack).unwrap();
+                    let r = a + b;
+                    printresult(&r);
+                    stack.push(r);
+                }
+                LineType::Minus => {
+                    let (a, b) = poptwo(stack).unwrap();
+                    let r = a - b;
+                    printresult(&r);
+                    stack.push(r);
+                }
+                LineType::Times => {
+                    let (a, b) = poptwo(stack).unwrap();
+                    let r = a * b;
+                    printresult(&r);
+                    stack.push(r);
+                }
+                LineType::Divide => {
+                    let (a, b) = poptwo(stack).unwrap();
+                    let r = b / a;
+                    printresult(&r);
+                    stack.push(r);
+                }
+                LineType::Pow => {
+                    let (a, b) = poptwo(stack).unwrap();
+                    let r = f64::powf(b, a);
+                    printresult(&r);
+                    stack.push(r);
+                }
+                LineType::Negate => {
+                    let a = stack.pop().unwrap();
+                    let r = -a;
+                    printresult(&r);
+                    stack.push(r);
+                }
+                LineType::Quit => std::process::exit(0),
+            }
+        }
 
 fn main() {
     println!("rp: command line rpn calculator");
@@ -118,6 +204,7 @@ fn main() {
         p:                               print top of stack
         f:                               print whole stack
         d:                               drop last element
+        ud:                              undo drop
         c:                               clear stack
         s:                               flip last two elements
         S:                               flip stack
@@ -128,74 +215,20 @@ fn main() {
     }
     let mut buff = String::new();
     let mut stack: Vec<f64> = Vec::new();
+    let mut undos: Vec<f64> = Vec::new();
     loop {
         buff.clear();
         print!("> ");
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut buff).expect("readline failed");
-        let val = process(&buff);
-        match val {
-            Some(i) => match i.t {
-                LineType::Number => stack.push(i.v),
-                LineType::Print => println!("{}", &stack.last().unwrap()),
-                LineType::Full => {
-                    for s in &stack {
-                        print!("{}\n", s);
-                    }
-                    print!("\n");
-                    io::stdout().flush().unwrap();
-                }
-                LineType::Pop => printresult(&(stack.pop().unwrap())),
-                LineType::Swap => {
-                    let (a, b) = poptwo(&mut stack).unwrap();
-                    stack.push(a);
-                    stack.push(b);
-                },
-                LineType::Flip => {stack.reverse()},
-                LineType::Clear => stack = Vec::new(),
-                LineType::ClearScreen => print!("{esc}c", esc = 27 as char),
-                LineType::Plus => {
-                    let (a, b) = poptwo(&mut stack).unwrap();
-                    let r = a + b;
-                    printresult(&r);
-                    stack.push(r);
-                }
-                LineType::Minus => {
-                    let (a, b) = poptwo(&mut stack).unwrap();
-                    let r = a - b;
-                    printresult(&r);
-                    stack.push(r);
-                }
-                LineType::Times => {
-                    let (a, b) = poptwo(&mut stack).unwrap();
-                    let r = a * b;
-                    printresult(&r);
-                    stack.push(r);
-                }
-                LineType::Divide => {
-                    let (a, b) = poptwo(&mut stack).unwrap();
-                    let r = b / a;
-                    printresult(&r);
-                    stack.push(r);
-                }
-                LineType::Pow => {
-                    let (a, b) = poptwo(&mut stack).unwrap();
-                    let r = f64::powf(b, a);
-                    printresult(&r);
-                    stack.push(r);
-                }
-                LineType::Negate => {
-                    let a = stack.pop().unwrap();
-                    let r = -a;
-                    printresult(&r);
-                    stack.push(r);
-                }
-                LineType::Quit => std::process::exit(0),
-            },
-            None => {
-                println!("?");
-                continue;
+        let vals = process(&buff);
+        match vals {
+            Some(vs) => {
+            for v in vs {
+                execute(v, &mut stack, &mut undos);
             }
+            }
+            None => {continue;}
         }
     }
 }
