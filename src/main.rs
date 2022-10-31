@@ -29,8 +29,9 @@ enum LineType {
 }
 
 struct Line {
-    t: LineType,
-    v: f64,
+    line_type: LineType,
+    value: f64,
+    combined: bool
 }
 
 fn try_operator(value: &char) -> Option<LineType> {
@@ -69,7 +70,7 @@ fn try_command(value: &str) -> Option<LineType> {
     return t;
 }
 
-fn try_combined(value: &str) -> Option<[Line]> {
+fn try_combined(value: &str) -> Option<Line> {
     let mut cs = value.chars();
     let last: &char = &(cs.next_back().unwrap());
     let first: &str = cs.as_str();
@@ -81,28 +82,29 @@ fn try_combined(value: &str) -> Option<[Line]> {
         Ok(val) => val,
         Err(_) => return None
     };
-    return Some([Line {t: LineType::Number, v: number}, Line {t: operation, v: 0.0 }])
+    return Some(Line {line_type: operation, value: number, combined: true})
 
 
 }
 
-fn process(buff: &String) -> Option<[Line]> {
+fn process(buff: &String) -> Option<Line> {
     let parsed = buff.trim().parse::<f64>();
 
     return match parsed {
-        Ok(val) => Some([Line {
-            t: LineType::Number,
-            v: val,
-        }]),
+        Ok(val) => Some(Line {
+            line_type: LineType::Number,
+            value: val,
+            combined: false
+        }),
         Err(_) => match buff.trim().parse::<char>() {
                 Ok(val) => match try_operator(&val) {
-                    Some(t) => Some([Line { t: t, v: 0.0 }]),
+                    Some(t) => Some(Line { line_type: t, value: 0.0, combined: false }),
                     _ => None,
                 },
                 Err(_) => match buff.trim().parse::<String>() {
                     Ok(val) => match try_command(&val) {
-                        Some(t) => Some([Line { t: t, v: 0.0 }]),
-                        None => None,
+                        Some(t) => Some(Line { line_type: t, value: 0.0, combined: false }),
+                        None => try_combined(&val),
                     }
                     Err(_) => None,
                 },
@@ -122,8 +124,12 @@ fn printresult(r: &f64) {
 }
 
 fn execute(val: &Line, stack: &mut Vec<f64>, undos: &mut Vec<f64>) {
-        match (*val).t {
-                LineType::Number => stack.push((*val).v),
+    if val.combined {
+        stack.push(val.value);
+    }
+    
+        match (*val).line_type {
+                LineType::Number => stack.push((*val).value),
                 LineType::Print => println!("{}", &stack.last().unwrap()),
                 LineType::Full => {
                     for s in stack {
@@ -223,11 +229,7 @@ fn main() {
         io::stdin().read_line(&mut buff).expect("readline failed");
         let vals = process(&buff);
         match vals {
-            Some(vs) => {
-            for v in vs {
-                execute(v, &mut stack, &mut undos);
-            }
-            }
+            Some(v) => execute(&v, &mut stack, &mut undos),
             None => {continue;}
         }
     }
