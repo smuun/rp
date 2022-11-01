@@ -21,7 +21,6 @@ fn poptwo(v: &mut Vec<f64>) -> Option<(f64, f64)> {
     return None;
 }
 
-
 pub fn execute(operation: &Line, stack: &mut Vec<f64>, undos: &mut Vec<f64>) {
     if operation.combined {
         stack.push(operation.value);

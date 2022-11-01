@@ -2,9 +2,9 @@ use std::env;
 use std::io;
 use std::io::Write;
 
+mod calculate;
 mod line;
 mod parse;
-mod calculate;
 
 fn main() {
     println!();

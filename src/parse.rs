@@ -1,5 +1,5 @@
-use crate::line::LineType;
 use crate::line::Line;
+use crate::line::LineType;
 
 fn try_operator(value: &char) -> Option<LineType> {
     let t: Option<LineType> = match value {
