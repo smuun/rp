@@ -78,7 +78,7 @@ pub fn execute(operation: &Line, stack: &mut Vec<f64>, undos: &mut Vec<f64>) {
         }
         LineType::Minus => {
             if let Some((a, b)) = poptwo(stack) {
-                let r = a - b;
+                let r = b - a;
                 printresult(&r);
                 stack.push(r);
             } else {
