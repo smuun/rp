@@ -5,7 +5,7 @@ A simple RPN calculator with `ed`-style input.  Basically a `dc` clone.
 Why:
 - ed and rpn are both unusable, so combining the two is funny
 - I was sick of opening Python for simple math
-- practice Rust
+- to practice Rust
 
 # Roadmap
 
