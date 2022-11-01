@@ -1,6 +1,6 @@
 # RP
 
-A simple RPN calculator with `ed`-style input.  Basically a `dc` clone.
+A simple RPN calculator with `ed`-style input.  A `dc` clone with almost none of `dc`'s functionality.
 
 Why:
 - ed and rpn are both unusable, so combining the two is funny
